@@ -1,0 +1,356 @@
+Here are **SDET interview-ready answers** to the SQL basics questions. I’ve kept them simple, with examples where useful.
+
+### 1. What is SQL?
+
+**SQL (Structured Query Language)** is a language used to **store, retrieve, update, and manage data in relational databases**.
+
+As an SDET, I use SQL mainly for:
+
+* Validating data after UI/API operations
+* Verifying database records
+* Writing test-data queries
+* Checking data integrity
+* Backend validation during API and end-to-end testing
+
+Example:
+
+```sql
+SELECT * FROM employees;
+```
+
+---
+
+### 2. What is the difference between DDL, DML, DCL, and TCL?
+
+| Type    | Full Form                    | Purpose                            | Examples                              |
+| ------- | ---------------------------- | ---------------------------------- | ------------------------------------- |
+| **DDL** | Data Definition Language     | Defines/changes database structure | `CREATE`, `ALTER`, `DROP`, `TRUNCATE` |
+| **DML** | Data Manipulation Language   | Manipulates data                   | `INSERT`, `UPDATE`, `DELETE`          |
+| **DCL** | Data Control Language        | Controls permissions               | `GRANT`, `REVOKE`                     |
+| **TCL** | Transaction Control Language | Manages transactions               | `COMMIT`, `ROLLBACK`, `SAVEPOINT`     |
+
+Examples:
+
+```sql
+-- DDL
+CREATE TABLE employees (
+    id INT,
+    name VARCHAR(100)
+);
+
+-- DML
+INSERT INTO employees VALUES (1, 'Rutuja');
+
+-- DCL
+GRANT SELECT ON employees TO tester;
+
+-- TCL
+COMMIT;
+ROLLBACK;
+```
+
+**Interview point:** `TRUNCATE` is generally classified as DDL because it changes the table's stored data structure/state at the database level, while `DELETE` is DML.
+
+---
+
+### 3. What is the difference between `WHERE` and `HAVING`?
+
+Both are used for filtering, but they work at different stages.
+
+* **WHERE** filters individual rows **before grouping**.
+* **HAVING** filters groups **after `GROUP BY` and aggregation**.
+
+Example:
+
+```sql
+-- WHERE
+SELECT *
+FROM employees
+WHERE salary > 50000;
+```
+
+Here, rows with salary ≤ 50,000 are filtered out.
+
+Using `HAVING`:
+
+```sql
+SELECT department, COUNT(*) AS employee_count
+FROM employees
+GROUP BY department
+HAVING COUNT(*) > 5;
+```
+
+Here, only departments having more than 5 employees are returned.
+
+**Easy way to remember:**
+
+> `WHERE` → filters rows
+> `HAVING` → filters groups
+
+---
+
+### 4. What is the difference between `DELETE`, `TRUNCATE`, and `DROP`?
+
+| Command    | Purpose                  | WHERE allowed? | Table remains? |
+| ---------- | ------------------------ | -------------- | -------------- |
+| `DELETE`   | Deletes selected rows    | Yes            | Yes            |
+| `TRUNCATE` | Removes all rows         | No             | Yes            |
+| `DROP`     | Removes the table itself | No             | No             |
+
+#### DELETE
+
+```sql
+DELETE FROM employees
+WHERE id = 101;
+```
+
+Deletes only the matching row.
+
+#### TRUNCATE
+
+```sql
+TRUNCATE TABLE employees;
+```
+
+Removes all rows but keeps the table structure.
+
+#### DROP
+
+```sql
+DROP TABLE employees;
+```
+
+Removes the table and its definition.
+
+**Interview answer:**
+
+> DELETE is used when I need to remove specific rows, TRUNCATE removes all rows while retaining the table, and DROP removes the entire table.
+
+Transaction behavior and identity/auto-increment behavior can vary by database system, so I would verify those details for the specific DBMS.
+
+---
+
+### 5. What is a Primary Key?
+
+A **Primary Key** is a column or combination of columns that **uniquely identifies each row in a table**.
+
+Properties:
+
+* Must contain unique values
+* Cannot contain `NULL`
+* Only one primary-key constraint can be defined per table, although it can contain multiple columns (composite key)
+
+Example:
+
+```sql
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY,
+    name VARCHAR(100)
+);
+```
+
+Here, `employee_id` uniquely identifies each employee.
+
+**SDET example:**
+I can use the primary key to verify that an API-created record exists exactly once in the database.
+
+---
+
+### 6. What is a Foreign Key?
+
+A **Foreign Key** is a column or combination of columns that references a key in another table, usually its primary key.
+
+It helps maintain **referential integrity** between tables.
+
+Example:
+
+```sql
+CREATE TABLE departments (
+    department_id INT PRIMARY KEY,
+    department_name VARCHAR(100)
+);
+
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY,
+    name VARCHAR(100),
+    department_id INT,
+    FOREIGN KEY (department_id)
+        REFERENCES departments(department_id)
+);
+```
+
+Here:
+
+```text
+departments
+department_id
+      ↑
+      |
+employees
+department_id
+```
+
+The employee's `department_id` must satisfy the foreign-key relationship defined with the department table, subject to the database's constraints.
+
+---
+
+### 7. What is the difference between `PRIMARY KEY` and `UNIQUE KEY`?
+
+| Primary Key                           | Unique Key                                |
+| ------------------------------------- | ----------------------------------------- |
+| Uniquely identifies each row          | Ensures values are unique                 |
+| Cannot contain `NULL`                 | NULL handling depends on the database     |
+| One primary-key constraint per table  | Multiple unique constraints can exist     |
+| Often used as the main row identifier | Used for other fields that must be unique |
+
+Example:
+
+```sql
+CREATE TABLE users (
+    user_id INT PRIMARY KEY,
+    email VARCHAR(100) UNIQUE
+);
+```
+
+Here:
+
+* `user_id` → Primary Key
+* `email` → Unique Key
+
+**Interview tip:** Don't simply say "UNIQUE allows NULL" without qualification. The treatment of `NULL` in a unique constraint is database-specific.
+
+---
+
+### 8. What is `NULL`? How do you check for NULL values?
+
+`NULL` means that a value is **missing, unknown, or not available**.
+
+It is **not the same as**:
+
+* `0`
+* Empty string `''`
+* `"NULL"` as text
+
+To check for NULL, use:
+
+```sql
+SELECT *
+FROM employees
+WHERE department_id IS NULL;
+```
+
+To check for non-NULL:
+
+```sql
+SELECT *
+FROM employees
+WHERE department_id IS NOT NULL;
+```
+
+❌ Don't use:
+
+```sql
+WHERE department_id = NULL
+```
+
+Because `NULL` represents an unknown value and comparisons using `=` do not work as expected.
+
+---
+
+### 9. Difference between `CHAR` and `VARCHAR`
+
+Both store character/string data, but they differ in how the data is stored and handled.
+
+| CHAR                                    | VARCHAR                            |
+| --------------------------------------- | ---------------------------------- |
+| Fixed-length character type             | Variable-length character type     |
+| Suitable for fixed-size values          | Suitable for varying-length values |
+| Can use space padding depending on DBMS | Stores variable-length strings     |
+| Example: country code                   | Example: name/email                |
+
+Example:
+
+```sql
+country_code CHAR(2)
+```
+
+Good for values such as:
+
+```text
+IN
+US
+UK
+```
+
+Whereas:
+
+```sql
+name VARCHAR(100)
+```
+
+is suitable because names have different lengths.
+
+**Interview answer:**
+
+> I use CHAR when the data has a fixed length and VARCHAR when the data length can vary.
+
+Exact storage and padding behavior can vary somewhat between database systems.
+
+---
+
+### 10. What are constraints in SQL?
+
+**Constraints are rules applied to table columns to maintain data accuracy, validity, and integrity.**
+
+Common constraints are:
+
+1. **PRIMARY KEY** – uniquely identifies each row.
+2. **FOREIGN KEY** – maintains relationships between tables.
+3. **UNIQUE** – prevents duplicate values.
+4. **NOT NULL** – prevents NULL values.
+5. **CHECK** – ensures values satisfy a condition.
+6. **DEFAULT** – provides a default value when one isn't supplied.
+
+Example:
+
+```sql
+CREATE TABLE employees (
+    employee_id INT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE,
+    age INT CHECK (age >= 18),
+    status VARCHAR(20) DEFAULT 'Active'
+);
+```
+
+### ⭐ Quick SDET Interview Revision
+
+Remember these 10 points:
+
+```text
+SQL       → Manage relational database data
+
+DDL       → Structure
+DML       → Data
+DCL       → Permissions
+TCL       → Transactions
+
+WHERE     → Filter rows
+HAVING    → Filter groups
+
+DELETE    → Selected rows
+TRUNCATE  → All rows
+DROP      → Entire table
+
+PK        → Unique + NOT NULL row identifier
+FK        → Relationship between tables
+UNIQUE    → Prevent duplicate values
+NULL      → Missing/unknown value
+
+CHAR      → Fixed length
+VARCHAR   → Variable length
+
+CONSTRAINTS → Rules for data integrity
+```
+
+For an **SDET interview**, the next important SQL topics after these are **JOINs, GROUP BY, subqueries, aggregate functions, window functions, indexes, normalization, and writing SQL queries for test-data validation**.
